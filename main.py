@@ -1,6 +1,7 @@
 import argparse
 import logging
 import os
+import sys
 import re
 import chardet
 import io
@@ -56,6 +57,14 @@ def remove_comments(input_file, output_file, remove_all=False):
         with io.open(input_file, 'r', encoding=encoding) as infile:  # Using io.open for encoding
             code = infile.read()
 
+        # Copyright lines have to be collected before any stripping runs.
+        # The old order searched the already stripped text, so a copyright
+        # notice written as a comment, the normal case, was deleted first
+        # and the preservation step found nothing to preserve.
+        copyright_notices = []
+        if not remove_all:
+            copyright_notices = re.findall(r'^.*Copyright.*$', code, re.MULTILINE)
+
         # Remove single-line comments (//)
         code = re.sub(r'//.*', '', code)
 
@@ -68,13 +77,10 @@ def remove_comments(input_file, output_file, remove_all=False):
         #Remove comments that start with a --
         code = re.sub(r'--.*', '', code)
         
-        if not remove_all:
-            # Preserve copyright notices (e.g., lines starting with "Copyright")
-            copyright_pattern = r'^(Copyright.*)$'
-            copyright_notices = re.findall(copyright_pattern, code, re.MULTILINE)
+        if copyright_notices:
             preserved_code = '\n'.join(copyright_notices) + '\n' + code
         else:
-             preserved_code = code
+            preserved_code = code
 
 
         with io.open(output_file, 'w', encoding=encoding) as outfile: # Using io.open for encoding
@@ -84,8 +90,10 @@ def remove_comments(input_file, output_file, remove_all=False):
 
     except FileNotFoundError:
         logging.error(f"File not found: {input_file}")
+        raise
     except Exception as e:
         logging.error(f"An error occurred: {e}")
+        raise
 
 
 def main():
@@ -101,14 +109,17 @@ def main():
     # Input validation
     if not os.path.isfile(args.input_file):
         logging.error(f"Error: Input file '{args.input_file}' does not exist.")
-        return
+        sys.exit(1)
 
     if os.path.exists(args.output_file):
         logging.warning(f"Warning: Output file '{args.output_file}' already exists. It will be overwritten.")
 
 
     # Call the comment removal function
-    remove_comments(args.input_file, args.output_file, args.remove_all)
+    try:
+        remove_comments(args.input_file, args.output_file, args.remove_all)
+    except Exception:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
