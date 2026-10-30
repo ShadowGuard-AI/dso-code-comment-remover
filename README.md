@@ -1,3 +1,5 @@
+![Banner](banner.png)
+
 # dso-code-comment-remover
 Removes comments from source code files to protect intellectual property or reduce the risk of information leakage. - Focused on Tools for sanitizing and obfuscating sensitive data within text files and structured data formats
 
