@@ -57,6 +57,14 @@ def family_for(input_file):
         return 'dash'
     return 'generic'
 
+# Two limits I know this scanner has, stated outside the docstring so this
+# stays a comment: a Python docstring is a triple quoted string to it, so
+# docstrings survive a strip that a reader might expect to remove them;
+# and a JavaScript regex literal is not a string to it, so a pattern
+# containing a comment marker can be misread as a comment start. Removing
+# a block comment also joins the text on either side without adding a
+# newline, so code that sat on lines the comment spanned ends up sharing
+# one line.
 def strip_comments(code, family, input_file, remove_all=False):
     """Strip true comments with a string aware scanner.
 
@@ -179,6 +187,11 @@ def remove_comments(input_file, output_file, remove_all=False):
     no output file is written.
     """
     try:
+        # The encoding is a chardet guess, and the output is written back
+        # in that same guess. On a short or mostly ASCII file the guess is
+        # usually right; when it is wrong, the output can be re-encoded
+        # into a different encoding than the input actually had, on top of
+        # losing its comments.
         encoding = detect_encoding(input_file)
         if not encoding:
             logging.error(f"Could not detect encoding for {input_file}.  Falling back to utf-8 but this may cause issues.")
@@ -195,6 +208,14 @@ def remove_comments(input_file, output_file, remove_all=False):
             return 0
 
         if preserved:
+            # Preserved notices are moved, not left in place: they are
+            # lifted out of wherever they sat and prepended to the top of
+            # the stripped code. I checked what that does to a script: the
+            # notice lands ahead of the shebang line, so the shebang is no
+            # longer the first line and the operating system will not honor
+            # it on direct execution. The check that preserves them is also
+            # a case sensitive substring test, so a lowercase copyright
+            # notice is stripped like any other comment.
             preserved_code = '\n'.join(preserved) + '\n' + stripped
         else:
             preserved_code = stripped
